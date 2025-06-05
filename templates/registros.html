@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Registros de Clientes</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4;}
+        table { border-collapse: collapse; width: 98%; margin: 24px auto; background: #fff;}
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 15px;}
+        th { background: #219150; color: #fff;}
+        tr:nth-child(even){ background: #f9f9f9;}
+        h2 { text-align: center; margin-top: 22px;}
+    </style>
+</head>
+<body>
+    <h2>Registros de Clientes</h2>
+    {% if registros %}
+    <table>
+        <tr>
+            {% for h in headers %}
+                <th>{{ h }}</th>
+            {% endfor %}
+        </tr>
+        {% for row in registros %}
+        <tr>
+            {% for idx in range(headers|length) %}
+                {% if headers[idx] == "Celular" %}
+                    <td>{{ row[idx]|celular_link|safe }}</td>
+                {% else %}
+                    <td>{{ row[idx] }}</td>
+                {% endif %}
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <p style="text-align:center">Nenhum registro encontrado.</p>
+    {% endif %}
+</body>
+</html>
