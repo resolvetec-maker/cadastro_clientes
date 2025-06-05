@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Formulário de Cadastro de Cliente</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f4f4; }
+        .container { background: #fff; padding: 24px; margin: 32px auto; border-radius: 10px; max-width: 540px; box-shadow: 0 0 10px #ccc; }
+        h2 { text-align: center; color: #2c3e50; }
+        label { margin-top: 15px; display: block; font-weight: bold; }
+        .required { color: #e74c3c; }
+        input[type="text"], input[type="email"], select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 5px; border: 1px solid #ccc; }
+        button { margin-top: 20px; width: 100%; padding: 10px; background: #27ae60; color: #fff; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #219150; }
+        .logo { text-align: center; margin-bottom: 15px; }
+        .logo img { max-width: 200px; height: auto; }
+        .alert { padding: 12px 16px; margin-bottom: 18px; border-radius: 5px; font-size: 15px; }
+        .alert-success { background: #eafaf1; color: #2e7d32; border: 1px solid #baf5d0; }
+        .alert-error { background: #faeaea; color: #c0392b; border: 1px solid #f5babd; }
+        .success-bottom { margin-top: 28px; }
+    </style>
+    <script>
+        function toggleCampos() {
+            var tp = document.getElementById('tipo_pessoa').value;
+            // Se está com erro de CPF, forçar mostrar campo CPF
+            var erroCPF = {{ 'true' if data.get('erro_cpf') else 'false' }};
+            var erroCNPJ = {{ 'true' if data.get('erro_cnpj') else 'false' }};
+            document.getElementById('cpf_campo').style.display = (tp === 'pf' || erroCPF) ? 'block' : 'none';
+            document.getElementById('cnpj_campo').style.display = (tp === 'pj' || erroCNPJ) ? 'block' : 'none';
+            document.getElementById('contato_campo').style.display = tp === 'pj' ? 'block' : 'none';
+        }
+        function aplicarMascaraCelular(campo) {
+            let v = campo.value.replace(/\D/g, '').slice(0, 11);
+            if (v.length > 0) v = '(' + v;
+            if (v.length > 3) v = v.slice(0, 3) + ') ' + v.slice(3);
+            if (v.length > 10) v = v.slice(0, 10) + '-' + v.slice(10);
+            campo.value = v;
+        }
+        function aplicarMascaraCEP(campo) {
+            let v = campo.value.replace(/\D/g, '').slice(0,8);
+            if (v.length > 5) v = v.slice(0,5) + '-' + v.slice(5);
+            campo.value = v;
+        }
+        function aplicarMascaraCPF(campo) {
+            campo.value = campo.value.replace(/\D/g, '')
+                                     .replace(/(\d{3})(\d)/, '$1.$2')
+                                     .replace(/(\d{3})(\d)/, '$1.$2')
+                                     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        }
+        function aplicarMascaraCNPJ(campo) {
+            campo.value = campo.value.replace(/\D/g, '')
+                                     .replace(/(\d{2})(\d)/, '$1.$2')
+                                     .replace(/(\d{3})(\d)/, '$1.$2')
+                                     .replace(/(\d{3})(\d)/, '$1/$2')
+                                     .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+        }
+        function formatarTextoInicialMaiuscula(campo) {
+            campo.value = campo.value.toLowerCase().replace(/(?:^|\s)(\S)/g, function(a) { return a.toUpperCase(); });
+        }
+        function formatarEmail(campo) {
+            campo.value = campo.value.toLowerCase();
+        }
+        function buscarEnderecoPorCEP() {
+            const cep = document.getElementById('cep').value.replace(/\D/g, '');
+            if (cep.length === 8) {
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.erro) {
+                        document.getElementById('endereco').value = data.logradouro || "";
+                        document.getElementById('bairro').value = data.bairro || "";
+                        document.getElementById('cidade').value = data.localidade || "";
+                        formatarTextoInicialMaiuscula(document.getElementById('endereco'));
+                        formatarTextoInicialMaiuscula(document.getElementById('bairro'));
+                        formatarTextoInicialMaiuscula(document.getElementById('cidade'));
+                    }
+                });
+            }
+        }
+        window.onload = function() {
+            toggleCampos();
+            // Se houver mensagem na div success-bottom, rolar até ela
+            var msgDiv = document.getElementById("mensagem-final");
+            if (msgDiv && msgDiv.innerText.trim() !== "") {
+                msgDiv.scrollIntoView({behavior: "smooth", block: "center"});
+            }
+        };
+    </script>
+</head>
+<body>
+<div class="container">
+    <div class="logo">
+        <img src="{{ url_for('static', filename='logo_resolve.png') }}" alt="Logo Resolve Tecnologia">
+    </div>
+    <h2>Cadastro de Cliente</h2>
+    <form method="POST" autocomplete="off">
+        <label>Tipo Pessoa: <span class="required">*</span>
+            <select id="tipo_pessoa" name="tipo_pessoa" onchange="toggleCampos()" required>
+                <option value="">Selecione</option>
+                <option value="pf" {% if data.tipo_pessoa == 'pf' %}selected{% endif %}>Pessoa Física</option>
+                <option value="pj" {% if data.tipo_pessoa == 'pj' %}selected{% endif %}>Pessoa Jurídica</option>
+            </select>
+        </label>
+        <div id="cpf_campo" style="display:none;">
+            <label>CPF: <span class="required">*</span>
+                <input type="text" name="cpf" maxlength="14" oninput="aplicarMascaraCPF(this)" value="{{ data.cpf|default('') }}">
+            </label>
+        </div>
+        <div id="cnpj_campo" style="display:none;">
+            <label>CNPJ: <span class="required">*</span>
+                <input type="text" name="cnpj" maxlength="18" oninput="aplicarMascaraCNPJ(this)" value="{{ data.cnpj|default('') }}">
+            </label>
+        </div>
+        <div id="contato_campo" style="display:none;">
+            <label>Contato: <span class="required">*</span>
+                <input type="text" name="contato" onblur="formatarTextoInicialMaiuscula(this)" value="{{ data.contato|default('') }}">
+            </label>
+        </div>
+        <label>Nome/Razão Social: <span class="required">*</span>
+            <input type="text" name="nome" onblur="formatarTextoInicialMaiuscula(this)" value="{{ data.nome|default('') }}">
+        </label>
+        <label>E-mail: <span class="required">*</span>
+            <input type="email" name="email" onblur="formatarEmail(this)" value="{{ data.email|default('') }}">
+        </label>
+        <label>Celular: <span class="required">*</span>
+            <input type="text" name="celular" maxlength="15" oninput="aplicarMascaraCelular(this)" value="{{ data.celular|default('') }}">
+        </label>
+        <label>CEP: <span class="required">*</span>
+            <input type="text" name="cep" id="cep" maxlength="9" oninput="aplicarMascaraCEP(this)" onblur="buscarEnderecoPorCEP()" value="{{ data.cep|default('') }}">
+        </label>
+        <label>Endereço: <span class="required">*</span>
+            <input type="text" name="endereco" id="endereco" onblur="formatarTextoInicialMaiuscula(this)" value="{{ data.endereco|default('') }}">
+        </label>
+        <label>Número: <span class="required">*</span>
+            <input type="text" name="numero" value="{{ data.numero|default('') }}">
+        </label>
+        <label>Complemento:
+            <input type="text" name="complemento" onblur="formatarTextoInicialMaiuscula(this)" value="{{ data.complemento|default('') }}">
+        </label>
+        <label>Bairro: <span class="required">*</span>
+            <input type="text" name="bairro" id="bairro" onblur="formatarTextoInicialMaiuscula(this)" value="{{ data.bairro|default('') }}">
+        </label>
+        <label>Cidade: <span class="required">*</span>
+            <input type="text" name="cidade" id="cidade" onblur="formatarTextoInicialMaiuscula(this)" value="{{ data.cidade|default('') }}">
+        </label>
+        <label>Observação:
+            <input type="text" name="observacao" onblur="formatarTextoInicialMaiuscula(this)" value="{{ data.observacao|default('') }}">
+        </label>
+        <button type="submit">Enviar</button>
+    </form>
+    <div class="success-bottom" id="mensagem-final">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'success' if category == 'sucesso' else 'error' }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+    </div>
+</div>
+</body>
+</html>
